@@ -1,0 +1,41 @@
+# Include package-specific variables if they exist
+-include Makefile.vars
+
+# Default values for variables
+PACKAGE_NAME ?= $(shell jq -r '.name' package-info.json)
+PACKAGE_VERSION ?= $(shell jq -r '.version' package-info.json)
+
+.PHONY: bundle release clean help
+
+# Default target
+all: bundle
+
+# Bundle dependencies
+bundle:
+	@echo "Bundling dependencies for $(PACKAGE_NAME)..."
+	@chmod +x dependencies/pdm.abstract/scripts/bundle-dependencies.sh
+	@./dependencies/pdm.abstract/scripts/bundle-dependencies.sh
+
+# Create a release
+release:
+	@echo "Creating release for $(PACKAGE_NAME)..."
+	@chmod +x dependencies/pdm.abstract/scripts/release.sh
+	@./dependencies/pdm.abstract/scripts/release.sh
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning build artifacts..."
+	@rm -rf javascript/dependencies
+	@rm -rf abstractions/dependencies
+	@rm -f *.zip
+	@rm -rf *-release
+
+# Help target
+help:
+	@echo "Available targets:"
+	@echo "  make bundle    - Bundle dependencies from pdm.abstract"
+	@echo "  make release   - Create a new release"
+	@echo "  make clean     - Clean build artifacts"
+	@echo "  make help      - Show this help message"
+	@echo ""
+	@echo "Package: $(PACKAGE_NAME) v$(PACKAGE_VERSION)" 
