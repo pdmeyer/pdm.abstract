@@ -1,0 +1,9 @@
+# Dependencies
+dependencies/
+
+# Build artifacts
+javascript/dependencies/
+abstractions/dependencies/
+
+# OS files
+.DS_Store
