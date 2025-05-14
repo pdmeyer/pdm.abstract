@@ -22,7 +22,7 @@ class MaxJsObject {
      * @constructor
      */
     constructor() {
-        this.args = this.parseJsArgs();
+        this.args = this._parseJsArgs();
         this.initialized = false;
         this._parameterCallbacks = new Map();
     }
@@ -38,6 +38,7 @@ class MaxJsObject {
                 // Format: 'paramName': { 
                 //     required: true|false, 
                 //     default: value,
+                //     parser: (value) => {return value}, // Optional parser function
                 //     callback: 'methodName' // Optional callback method
                 // }
             },
@@ -68,16 +69,17 @@ class MaxJsObject {
     }
 
     /**
-     * Parses Max jsarguments into a structured object
-     * @private
-     * @returns {Object} Parsed arguments object with grouped and mapped parameters
+     * Static method to perform initial grouping of arguments
+     * @static
+     * @param {Array} argsArray - Array of arguments to parse
+     * @returns {Object} Grouped arguments with unaddressed arguments
      */
-    parseJsArgs() {
+    static getJsArgs() {
         const argsArray = jsarguments.slice(1);
+
         const groupedArgs = { unaddressed: [] };
         let currentKey = 'unaddressed';
 
-        // First pass: parse into grouped and unaddressed arguments
         argsArray.forEach((arg) => {
             if (String(arg).indexOf('@') === 0) {
                 currentKey = arg.substring(1);
@@ -90,61 +92,78 @@ class MaxJsObject {
             }
         });
 
-        // Second pass: apply signatures to unaddressed arguments
-        if (groupedArgs.unaddressed.length > 0) {
-            const api = this.constructor.api;
-            if (api.signatures) {
-                // Find matching signature
-                const matchingSignature = api.signatures.find(signature => {
-                    if (signature.count !== undefined) {
-                        return signature.count === groupedArgs.unaddressed.length;
-                    }
-                    return signature.when(groupedArgs);
-                });
-
-                if (matchingSignature) {
-                    if (matchingSignature.count !== undefined) {
-                        // Handle simple count-based mapping
-                        // First, collect all values for each parameter
-                        const paramValues = {};
-                        matchingSignature.params.forEach((paramName, index) => {
-                            if (index < groupedArgs.unaddressed.length) {
-                                if (!paramValues[paramName]) {
-                                    paramValues[paramName] = [];
-                                }
-                                paramValues[paramName].push(groupedArgs.unaddressed[index]);
-                            }
-                        });
-                        
-                        // Then apply the collected values
-                        Object.entries(paramValues).forEach(([paramName, values]) => {
-                            if (!groupedArgs[paramName]) {
-                                groupedArgs[paramName] = values;
-                            }
-                        });
-                    } else {
-                        // Handle full signature with custom condition
-                        Object.entries(matchingSignature.then.mappings || {}).forEach(([paramName, index]) => {
-                            if (index < groupedArgs.unaddressed.length && !groupedArgs[paramName]) {
-                                groupedArgs[paramName] = [groupedArgs.unaddressed[index]];
-                            }
-                        });
-
-                        Object.entries(matchingSignature.then.defaults || {}).forEach(([paramName, value]) => {
-                            if (!groupedArgs[paramName]) {
-                                groupedArgs[paramName] = [value];
-                            }
-                        });
-                    }
-                }
-            }
-        }
-
         if (groupedArgs.unaddressed.length === 0) {
             delete groupedArgs.unaddressed;
         }
 
-        // Filter out internal MaxJsObject properties
+        return groupedArgs;
+    }
+
+    /**
+     * Instance method to handle signature-based argument mapping
+     * @private
+     * @param {Object} groupedArgs - Arguments grouped by key
+     * @returns {Object} Updated grouped arguments with signature mappings applied
+     */
+    _applySignatures(groupedArgs) {
+        if (!groupedArgs.unaddressed || groupedArgs.unaddressed.length === 0) {
+            return groupedArgs;
+        }
+
+        const api = this.constructor.api;
+        if (!api.signatures) {
+            return groupedArgs;
+        }
+
+        // Find matching signature
+        const matchingSignature = api.signatures.find(signature => {
+            if (signature.count !== undefined) {
+                return signature.count === groupedArgs.unaddressed.length;
+            }
+            return signature.when(groupedArgs);
+        });
+
+        if (!matchingSignature) {
+            return groupedArgs;
+        }
+
+        if (matchingSignature.count !== undefined) {
+            // Handle simple count-based mapping
+            const paramValues = {};
+            matchingSignature.params.forEach((paramName, index) => {
+                if (index < groupedArgs.unaddressed.length) {
+                    if (!paramValues[paramName]) {
+                        paramValues[paramName] = [];
+                    }
+                    paramValues[paramName].push(groupedArgs.unaddressed[index]);
+                }
+            });
+            
+            // Apply the collected values
+            Object.entries(paramValues).forEach(([paramName, values]) => {
+                if (!groupedArgs[paramName]) {
+                    groupedArgs[paramName] = values;
+                }
+            });
+        } else {
+            // Handle full signature with custom condition
+            Object.entries(matchingSignature.then.mappings || {}).forEach(([paramName, index]) => {
+                if (index < groupedArgs.unaddressed.length && !groupedArgs[paramName]) {
+                    groupedArgs[paramName] = [groupedArgs.unaddressed[index]];
+                }
+            });
+
+            Object.entries(matchingSignature.then.defaults || {}).forEach(([paramName, value]) => {
+                if (!groupedArgs[paramName]) {
+                    groupedArgs[paramName] = [value];
+                }
+            });
+        }
+
+        return groupedArgs;
+    }
+
+    _filterArgs(args) {
         const internalProps = new Set([
             'args',
             'initialized',
@@ -152,13 +171,29 @@ class MaxJsObject {
         ]);
 
         const filteredArgs = {};
-        Object.entries(groupedArgs).forEach(([key, value]) => {
+        Object.entries(args).forEach(([key, value]) => {
             if (!internalProps.has(key)) {
                 filteredArgs[key] = value;
             }
         });
 
         return filteredArgs;
+    }
+
+    /**
+     * Main method to parse JavaScript arguments
+     * @returns {Object} Filtered and processed arguments
+     */
+    _parseJsArgs() {
+        
+        // Step 1: Initial grouping
+        const groupedArgs = MaxJsObject.getJsArgs(argsArray);
+        
+        // Step 2: Apply signatures
+        const processedArgs = this._applySignatures(groupedArgs);
+
+        // Step 3: Filter out internal properties
+        return this._filterArgs(processedArgs);
     }
 
     /**
@@ -211,7 +246,7 @@ class MaxJsObject {
 
         // Set parameters from arguments and register callbacks
         Object.entries(this.constructor.api.parameters).forEach(([name, spec]) => {
-            const value = this.getArg(name, spec.default);
+            const value = this._getArg(name, spec.default);
             if (value !== null) {
                 this[name] = value;
                 // Register callback if specified
@@ -257,7 +292,7 @@ class MaxJsObject {
      * @param {any} defaultValue - Default value if argument is not present
      * @returns {any} Argument value or default
      */
-    getArg(argName, defaultValue = null) {
+    _getArg(argName, defaultValue = null) {
         return this.args[argName] ? this.args[argName][0] : defaultValue;
     }
 
@@ -267,7 +302,7 @@ class MaxJsObject {
      * @param {string} argName - Name of the argument
      * @returns {Array} Array of argument values
      */
-    getArgValues(argName) {
+    _getArgValues(argName) {
         return this.args[argName] || [];
     }
 
@@ -279,12 +314,28 @@ class MaxJsObject {
      */
     _handleParameterChange(paramName, ...args) {
         post('Parameter change detected for ', paramName, ' with values: ', args, '\n');
-        post('this._parameterCallbacks: ', this._parameterCallbacks, '\n');
-        post('this._parameterCallbacks.get(paramName): ', this._parameterCallbacks.get(paramName), '\n');
+        
+        // Get the parameter specification
+        const paramSpec = this.constructor.api.parameters[paramName];
+        
+        // Apply parser function if defined
+        let processedArgs = args;
+        if (paramSpec && paramSpec.parser && typeof paramSpec.parser === 'function') {
+            processedArgs = args.map(arg => paramSpec.parser(arg));
+        }
+        
+        // Update the instance property with the processed value
+        if (processedArgs.length === 1) {
+            this[paramName] = processedArgs[0];
+        } else {
+            this[paramName] = processedArgs;
+        }
+        
+        // Call the callback if one exists
         const callback = this._parameterCallbacks.get(paramName);
         if (callback) {
             post('Calling callback for ', paramName, '\n');
-            callback(args);
+            callback(processedArgs);
         }
     }
 
@@ -295,11 +346,6 @@ class MaxJsObject {
      */
     anything(message, ...args) {
         const api = this.constructor.api;
-        
-        // Handle init message
-        if (message === 'init') {
-            return this.init();
-        }
         
         // Check if it's a parameter set
         if (message in api.parameters) {

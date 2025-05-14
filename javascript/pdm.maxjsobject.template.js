@@ -92,7 +92,5 @@ class MyMaxObject extends MaxJsObject {
 const instance = new MyMaxObject();
 
 // Export functions for Max
-function init() { return instance.init(); }
 function anything() { instance.anything(messagename, ...arrayfromargs(arguments)); }
-function bang() { instance.bang(); }
-function loadbang() { instance.init(); }
+function loadbang() { instance.anything('init'); }
