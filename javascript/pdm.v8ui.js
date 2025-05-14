@@ -21,8 +21,7 @@ class V8ui{
         // Initialize interaction handler
         this.interaction = null;
         this.multiElementDrag = false;
-        this.doubleClickTimeout = 500;
-        this.dragTimeout = 25;
+        this.clickTimeout = 500;
         this.dumpOutlet = 1;
         this.drawDelay = 20;
         
@@ -206,15 +205,10 @@ class V8ui{
 
     _initializeV8uiConfig(config) {
         // Validate and set interactionTimeout
-        if (typeof config.doubleClickTimeout === 'number' && config.doubleClickTimeout >= 0) {
-            this.doubleClickTimeout = config.doubleClickTimeout;
+        if (typeof config.clickTimeout === 'number' && config.clickTimeout >= 0) {
+            this.clickTimeout = config.clickTimeout;
         }
-
-        // Validate and set dragTimeout
-        if (typeof config.dragTimeout === 'number' && config.dragTimeout >= 0) {
-            this.dragTimeout = config.dragTimeout;
-        }
-
+        
         // Validate and set dumpOutlet
         if (typeof config.dumpOutlet === 'number' && Number.isInteger(config.dumpOutlet) && config.dumpOutlet >= 0) {
             this.dumpOutlet = config.dumpOutlet;

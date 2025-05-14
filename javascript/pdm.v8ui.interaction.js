@@ -2,9 +2,7 @@ class Interaction {
     constructor(v8ui) {
         this.v8ui = v8ui;
         this.multiElementDrag = v8ui.multiElementDrag;
-        this.doubleClickTimeout = v8ui.doubleClickTimeout;
-        this.dragTimeout = v8ui.dragTimeout;
-        post('doubleClickTimeout', this.doubleClickTimeout, 'dragTimeout', this.dragTimeout, '\n');
+        this.clickTimeout = v8ui.clickTimeout;
 
         // State management
         this._state = {
@@ -15,26 +13,16 @@ class Interaction {
             startPos: { x: 0, y: 0 }
         };
 
-        // Task management
-        this._clickTimeoutTask = new Task(function() {
-            this._handleEvent('handleClick', ...this._interactionArgs);
-        }.bind(this), this);
-
-        this._dragTimeoutTask = new Task(function() {
-            if(this._clickTimeoutTask.running) {
-                this._clickTimeoutTask.cancel();
-            }
-            this._handleDrag(...this._interactionArgs);
-        }.bind(this), this);
+        this._timer = new Task(this._timeout.bind(this), this);
     }
 
     interact(message, x, y, button, modifier1, shift, capslock, option, ctrl) {
         [x, y] = this._updateElementAtPosition(x, y);
         
         const eventHandlers = {
-            click: () => this._onClick(x, y, button, modifier1, shift, capslock, option, ctrl),
-            dblclick: () => this._handleDoubleClick(x, y, button, modifier1, shift, capslock, option, ctrl),
+            click: () => {}, //wait for mouse up (drag with button 0)
             drag: () => this._onDrag(x, y, button, modifier1, shift, capslock, option, ctrl),
+            dblclick: () => this._handleDoubleClick(x, y, button, modifier1, shift, capslock, option, ctrl),
             idle: () => this._handleEvent('handleIdle', x, y, button, modifier1, shift, capslock, option, ctrl),
             idleout: () => this._handleEvent('handleIdleOut', x, y, button, modifier1, shift, capslock, option, ctrl)
         };
@@ -56,46 +44,44 @@ class Interaction {
         return [x, y];
     }
 
-    _onClick(x, y, button, modifier1, shift, capslock, option, ctrl) {
-        this._interactionArgs = [x, y, button, modifier1, shift, capslock, option, ctrl];
-        
-        if (button !== 1) return;
-
-        if (this.doubleClickTimeout > 0) {
-            this._clickTimeoutTask.cancel();
-            this._clickTimeoutTask.schedule(this.doubleClickTimeout);
-        } else {
-            this._clickTimeoutTask.execute();
+    _onDrag(x, y, button, modifier1, shift, capslock, option, ctrl) {
+        if(button === 1) { //if drag 1, then we're dragging
+            this._state.isDragging = true;
+            this._state.startPos = { x, y };
+            this._state.dragElement = this._state.element;
+            this._handleDrag(x, y, button, modifier1, shift, capslock, option, ctrl);
+        } else { //if drag 0...
+            if(this._state.isDragging) { //if we're dragging, then we're done
+                this._handleDragEnd();
+            } else { //if we're not dragging, then we're either clicking or double clicking
+                this._onClick(x, y, button, modifier1, shift, capslock, option, ctrl)
+            }
         }
+        
+    }
+
+    _onClick(x, y, button, modifier1, shift, capslock, option, ctrl) { //when mouse button is released while not dragging
+        this._interactionArgs = [x, y, button, modifier1, shift, capslock, option, ctrl];
+
+        if (this.clickTimeout === 0) {
+            this._timer.execute();
+        } else {
+            if(this._timer.running) {
+                this._timer.cancel();
+            }
+            this._timer.schedule(this.clickTimeout);
+        }
+    }
+
+    _timeout() {
+        this._handleEvent('handleClick', ...this._interactionArgs);
     }
 
     _handleDoubleClick(x, y, button, modifier1, shift, capslock, option, ctrl) {
-        if(this._clickTimeoutTask.running) {
-            this._clickTimeoutTask.cancel();
+        if(this._timer.running) {
+            this._timer.cancel();
         }
         this._handleEvent('handleDoubleClick', x, y, button, modifier1, shift, capslock, option, ctrl);
-    }
-
-    _onDrag(x, y, button, modifier1, shift, capslock, option, ctrl) {
-        if (button === 0) {
-            if (this._dragTimeoutTask.running) {
-                this._dragTimeoutTask.cancel();
-                this._handleEvent('handleClick', ...this._interactionArgs);
-            }
-            return;
-        }
-
-        if(this._state.isDragging) {
-            this._handleDrag(x, y, button, modifier1, shift, capslock, option, ctrl);
-            return;
-        }
-
-        if (this.dragTimeout === 0) {
-            this._dragTimeoutTask.execute();
-        } else if (!this._dragTimeoutTask.running) {
-            this._interactionArgs = [x, y, button, modifier1, shift, capslock, option, ctrl];
-            this._dragTimeoutTask.schedule(this.dragTimeout);
-        }
     }
 
     _handleEvent(handlerName, x, y, button, modifier1, shift, capslock, option, ctrl) {
@@ -106,27 +92,14 @@ class Interaction {
     }
 
     _handleDrag(x, y, button, modifier1, shift, capslock, option, ctrl) {
-        if (button !== 1) {
-            this._handleDragEnd();
-            return;
-        }
-
         this._state.element = this.v8ui.layout.findElementAtPosition(x, y);
-        
-        if (!this._state.isDragging) {
-            this._state.isDragging = true;
-            this._state.startPos = { x, y };
+    
+        if (this.multiElementDrag) {
             this._state.dragElement = this._state.element;
         }
 
-        if (this._state.isDragging) {
-            if (this.multiElementDrag) {
-                this._state.dragElement = this._state.element;
-            }
-
-            const dragInfo = this._createDragInfo(x, y);
-            this._state.dragElement.handleDrag(x, y, button, modifier1, shift, capslock, option, ctrl, dragInfo);
-        }
+        const dragInfo = this._createDragInfo(x, y);
+        this._state.dragElement.handleDrag(x, y, button, modifier1, shift, capslock, option, ctrl, dragInfo);
 
         this._state.lastPos = { x, y };
     }

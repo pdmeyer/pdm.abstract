@@ -5,8 +5,7 @@ const V8ui = require('./pdm.v8ui.js').V8ui;
 
 const config = {
     elements: 1,
-    doubleClickTimeout: 250,
-    dragTimeout: 100,
+    clickTimeout: 250,
     multiElementDrag: false,
     dumpOutlet: 1,
     drawDelay: 20
