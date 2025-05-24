@@ -82,6 +82,10 @@ class MaxJsObject {
 
         argsArray.forEach((arg) => {
             if (String(arg).indexOf('@') === 0) {
+                //if there's only one arg for the last key, unwrap it from the array
+                if(groupedArgs[currentKey].length === 1) {
+                    groupedArgs[currentKey] = groupedArgs[currentKey][0];
+                }
                 currentKey = arg.substring(1);
                 groupedArgs[currentKey] = [];
             } else {
@@ -187,7 +191,7 @@ class MaxJsObject {
     _parseJsArgs() {
         
         // Step 1: Initial grouping
-        const groupedArgs = MaxJsObject.getJsArgs(argsArray);
+        const groupedArgs = MaxJsObject.getJsArgs();
         
         // Step 2: Apply signatures
         const processedArgs = this._applySignatures(groupedArgs);
@@ -375,6 +379,29 @@ class MaxJsObject {
      */
     _handleUnknownMessage(message, ...args) {
         error(`Unknown message: ${message}\n`);
+    }
+
+    static getObjectAttrs(varname) {
+        const reserved = {
+            "cpu": true, "cpumeasure": true, "dumpoutlet": true, "poll": true, 
+            "autoexport": true, "exportfolder": true, "exportname": true, 
+            "exportnotifier": true, "exportscript": true, "exportscriptargs": true, 
+            "gen": true, "nocache": true, "t": true, "title": true, "hot": true
+        };
+            
+            const mobj = this.patcher.getnamed(varname);
+            if(!mobj) {
+                error('object with varname', varname, 'not found\n')
+                return;
+            }
+            const attrs = {};
+            const attrnames = mobj.getattrnames();
+            attrnames.forEach((name) => {
+                if(!(mobj.maxclass === "gen~" && reserved[name])) {
+                    attrs[name] = mobj.getattr(name);
+                }
+            })
+            return attrs;
     }
 }
 
