@@ -4,7 +4,7 @@
 		"appversion" : 		{
 			"major" : 9,
 			"minor" : 0,
-			"revision" : 6,
+			"revision" : 7,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
@@ -40,7 +40,7 @@
 			}
 , 			{
 				"box" : 				{
-					"code" : "const tp = this.patcher;\r\nconst tpp = tp.parentpatcher;\r\n\r\nfunction bang() {\r\n\tlet ptext = tp.box.boxtext.split(\" \");\r\n\tlet pname = ptext[0]\r\n\tlet pargs = ptext.slice(1,ptext.length)\r\n\tlet reqArgCount = pargs[0];\r\n\tif(isNaN(reqArgCount) || Number(reqArgCount) < 0) {\r\n\t\terror(pname+':', 'Invalid argument. Argument must be an integer greater than 0.')\r\n\t} else {\r\n\t\treqArgCount = parseInt(reqArgCount);\r\n\t}\r\n\t\r\n\tlet pptext = tpp.box.boxtext.split(\" \");\r\n\tlet ppargs = pptext.slice(1,pptext.length)\r\n\tlet ppname = ptext.slice(0, 1)\r\n\t\r\n\tif(ppargs.length < reqArgCount) {\r\n\t\terror(ppname+':', 'Insufficient arguments. Requires', reqArgCount, 'three arguments.\\n')\r\n\t} else { \r\n\t\toutlet(0, ppargs.slice(0, reqArgCount + 1));\r\n\t}\r\n}\r\n\t\r\n\tfunction loadbang() {\r\n\tbang();\r\n} ",
+					"code" : "const tp = this.patcher;\r\nconst tpp = tp.parentpatcher;\r\n\r\nfunction bang() {\r\n\tlet ptext = tp.box.boxtext.split(\" \");\r\n\tlet pname = ptext[0]\r\n\tlet pargs = ptext.slice(1,ptext.length)\r\n\tlet reqArgCount = pargs[0];\r\n\tif(isNaN(reqArgCount) || Number(reqArgCount) < 0) {\r\n\t\terror(pname+':', 'Invalid argument. Argument must be an integer greater than 0.')\r\n\t} else {\r\n\t\treqArgCount = parseInt(reqArgCount);\r\n\t}\r\n\t\r\n\tlet pptext = tpp.box.boxtext.split(\" \");\r\n\tlet ppargs = pptext.slice(1,pptext.length)\r\n\tlet ppname = ptext.slice(0, 1)\r\n\t\r\n\tif(ppargs.length < reqArgCount) {\r\n\t\terror(ppname+':', 'Insufficient arguments. Requires', reqArgCount, 'three arguments.\\n')\r\n\t} else { \r\n\t\toutlet(0, ppargs.slice(0, reqArgCount + 1));\r\n\t}\r\n}",
 					"filename" : "none",
 					"fontface" : 0,
 					"fontname" : "<Monospaced>",
@@ -50,7 +50,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 50.0, 100.0, 877.0, 465.0 ],
+					"patching_rect" : [ 50.0, 97.0, 771.0, 376.0 ],
 					"saved_object_attributes" : 					{
 						"parameter_enable" : 0
 					}
@@ -66,7 +66,7 @@
 					"maxclass" : "outlet",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 50.0, 609.0, 30.0, 30.0 ]
+					"patching_rect" : [ 50.0, 482.0, 30.0, 30.0 ]
 				}
 
 			}
